@@ -1,0 +1,37 @@
+{
+  "development": {
+    "username": "postgres",
+    "password": "12345", 
+    "database": "crm_pms",
+    "host": "localhost",
+    "dialect": "postgres",
+    "dialectOptions": {
+      "authentication": {
+        "type": "md5" 
+      }
+    }
+  },
+  "test": {
+    "username": "postgres",
+    "password": "password", 
+    "database": "mydatabase_test",
+    "host": "127.0.0.1",
+    "dialect": "postgres"
+  },
+  "production": {
+    "username": "postgres",
+    "password": "password",  
+    "database": "mydatabase_production",
+    "host": "127.0.0.1",
+    "dialect": "postgres",
+    "dialectOptions": {
+      "ssl": {
+        "require": true,
+        "rejectUnauthorized": false
+      },
+      "authentication": {
+        "type": "md5"  
+      }
+    }
+  }
+}
