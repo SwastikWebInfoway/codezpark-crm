@@ -1,11 +1,21 @@
 const User = require('../models/user');
-
+const bcrypt = require('bcrypt');
 const createUser = async (user) => {
+
+  const password = await bcrypt.hash(user.password, 10);
+  //bcrypt.compare(plainPassword, hashedPassword)
+
   try {
-    const newUser = await User.create(user);
-    return newUser.id;
+    return await User.create({
+      company_id: user.company_id,
+      firstname: user.firstname,
+      email: user.email,
+      password: password,
+      role_id: 1,
+      lastname: user.lastname || null,
+      phone_number: user.phone_number || null
+    });
   } catch (error) {
-    console.error('Error creating user:', error);
     throw error;
   }
 };

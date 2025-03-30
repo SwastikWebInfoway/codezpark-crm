@@ -30,6 +30,43 @@ const validateRegistration = [
     .trim()
     .isLength({ max: 50 }).withMessage('Industry cannot exceed 50 characters'),
 
+  check('firstname')
+    .not().isEmpty().withMessage('First Name is required')
+    .trim()
+    .isLength({ min: 2, max: 100 }).withMessage('First Name must be 2-100 characters long'),
+
+  check('lastname')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 }).withMessage('First Name must be 2-100 characters long'),
+
+    check('email')
+      .not().isEmpty().withMessage('Email is required')
+      .trim()
+      .normalizeEmail()
+      .isEmail().withMessage('Must be a valid email address'),
+
+    check('password')
+      .not().isEmpty().withMessage('Password is required')
+      .isLength({ min: 8 }).withMessage('Password must be at least 8 characters long')
+      .matches(/[A-Z]/).withMessage('Password must contain at least one uppercase letter')
+      .matches(/[a-z]/).withMessage('Password must contain at least one lowercase letter')
+      .matches(/[0-9]/).withMessage('Password must contain at least one number')
+      .matches(/[^A-Za-z0-9]/).withMessage('Password must contain at least one special character')
+      .custom((value, { req }) => {
+        if (value === req.body.email) {
+          throw new Error('Password cannot be the same as your email');
+        }
+        return true;
+      }),
+
+    check('phonenumber')
+      .optional({ checkFalsy: true })
+      .trim()
+      .matches(/^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/im)
+      .withMessage('Invalid phone number format'),
+  
+
   // Error handling middleware
   (req, res, next) => {
     const errors = validationResult(req);

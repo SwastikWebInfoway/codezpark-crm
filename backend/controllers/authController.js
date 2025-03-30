@@ -3,11 +3,12 @@ const bcrypt = require("bcrypt");
 const jwt = require('../utils/jwt');
 // const { createUser, findByEmail, findById } = require("../services/userService");
 const { createClient, findByEmail } = require("../services/clientService");
+const { createUser } = require("../services/userService");
 const Token = require("../models/token");
 
 const register = async (req, res) => {
   
-  const { company_name, company_address, company_email, company_phonenumber, company_industry } = req.body;
+  const { company_name, company_address, company_email, company_phonenumber, company_industry, firstname, lastname, email, password, phonenumber } = req.body;
 
   if (company_email) {
     const emailExists = await findByEmail(company_email);
@@ -19,24 +20,20 @@ const register = async (req, res) => {
   }
 
   const client = await createClient({ company_name, company_address, company_email, company_phonenumber, company_industry });
+
+  if(client.id > 0){
+    const user = await createUser({
+      company_id : client.id,
+      firstname,
+      lastname,
+      email,
+      password,
+      phonenumber
+    });
+    console.log('user',user);
+  }
   
   return res.status(201).json();
-
-  if (existingUser) {
-    return res.status(400).json({ message: "Email already exists" });
-  }
-
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  // Create new user
-  const userId = await createUser({
-    firstname,
-    lastname,
-    email,
-    password: hashedPassword,
-    phone_number,
-    role : 1
-  });
 
   //Create JWT Tokens
   const accessToken = jwt.generateAccessToken({id : userId, email : email});
