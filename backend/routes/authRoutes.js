@@ -8,7 +8,8 @@ const router = express.Router();
 
 router.post('/register', validateRegistration, authController.register);
 router.post('/login', validateLogin, authController.login);
-router.post('/refresh-token', authController.refreshToken);
+router.post('/refresh-token', authController.logout);
+router.post('/logout', authController.refreshToken);
 router.post('/create-client', jwtMiddleware, validateClientCreate, clientController.createProfile);
 router.post('/add-user', jwtMiddleware, validateAddUser, clientController.addUser);
 router.post('/get-user', jwtMiddleware, validateId, clientController.getUser);

@@ -1,5 +1,6 @@
 const User = require('../models/user');
 const bcrypt = require('bcrypt');
+
 const createUser = async (user) => {
 
   const password = await bcrypt.hash(user.password, 10);
@@ -32,7 +33,7 @@ const findByUsername = async (username) => {
 
 const findByEmail = async (email) => {
   try {
-    const user = await User.findOne({ where: { email } });
+    const user = await User.findOne({ where: { email }, attributes: ['id', 'email', 'password', 'firstname', 'lastname'], });
     return user;
   } catch (error) {
     console.error('Error finding user by email:', error);

@@ -3,50 +3,56 @@ const bcrypt = require("bcrypt");
 const jwt = require('../utils/jwt');
 // const { createUser, findByEmail, findById } = require("../services/userService");
 const { createClient, findByEmail } = require("../services/clientService");
-const { createUser } = require("../services/userService");
+const { createUser, findByEmail: findUserByEmail } = require("../services/userService");
 const Token = require("../models/token");
 
 const register = async (req, res) => {
-  
+
   const { company_name, company_address, company_email, company_phonenumber, company_industry, firstname, lastname, email, password, phonenumber } = req.body;
 
   if (company_email) {
     const emailExists = await findByEmail(company_email);
     if (emailExists) {
       return res.status(409).json({
-        message: 'Email already registered'
+        message: 'Company Email already registered'
       });
     }
   }
 
+  const userEmailExist = await findUserByEmail(email);
+  if (userEmailExist) {
+    return res.status(409).json({
+      message: 'Email already registered'
+    });
+  }
+
   const client = await createClient({ company_name, company_address, company_email, company_phonenumber, company_industry });
 
-  if(client.id > 0){
+  if (client.id > 0) {
     const user = await createUser({
-      company_id : client.id,
+      company_id: client.id,
       firstname,
       lastname,
       email,
       password,
       phonenumber
     });
-    console.log('user',user);
+
+    //Create JWT Tokens
+    const accessToken = jwt.generateAccessToken({ id: user.id, email: email });
+    const refreshToken = jwt.generateRefreshToken({ id: user.id, email: email });
+
+    // Set HTTP-only cookie for refreshToken (secure in production)
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      sameSite: 'strict' // Prevent CSRF
+    });
+
+    return res.status(201).json({ userid: user.id, accessToken });
   }
-  
-  return res.status(201).json();
 
-  //Create JWT Tokens
-  const accessToken = jwt.generateAccessToken({id : userId, email : email});
-  const refreshToken = jwt.generateRefreshToken({id : userId, email : email});
-
-  //Add Both token in database
-  await Token.create({
-    userId: userId,
-    accessToken,
-    refreshToken,
-  });
-
-  res.status(201).json({ userid : userId, accessToken, refreshToken });
 };
 
 const login = async (req, res) => {
@@ -55,24 +61,35 @@ const login = async (req, res) => {
   const { email, password } = req.body;
 
   //Get User record by email from database
-  const user = await findByEmail(email);
+  const user = await findUserByEmail(email);
 
-  if (!user || !(await bcrypt.compare(password, user.password))) {
-    return res.status(400).json({ message: "Invalid credentials" });
+  if (!user) {
+    return res.status(401).json({ message: "Invalid email" });
   }
 
-  //Create JWT Tokens
-  const accessToken = jwt.generateAccessToken({id : user.id, email : user.email});
-  const refreshToken = jwt.generateRefreshToken({id : user.id, email : user.email});
+  console.log(' input password', password);
+  console.log(' user password', user.password);
 
-  //Add Both token in database
-  await Token.create({
-    userId: user.id,
-    accessToken,
-    refreshToken,
+
+  const isPasswordValid = await bcrypt.compare(password, user.password.trim());
+
+  // if (!isPasswordValid) {
+  //   return res.status(401).json({ message: "Invalid  password" });
+  // }
+
+  //Create JWT Tokens
+  const accessToken = jwt.generateAccessToken({ id: user.id, email: user.email });
+  const refreshToken = jwt.generateRefreshToken({ id: user.id, email: user.email });
+
+  // Set HTTP-only cookie for refreshToken (secure in production)
+  res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    sameSite: 'strict' // Prevent CSRF
   });
 
-  res.json({ accessToken, refreshToken, email : user.email, firstname : user.lastname, lastname : user.lastname, userid : user.id });
+  return res.status(201).json({ userid: user.id, accessToken });
 };
 
 const refreshToken = async (req, res) => {
@@ -102,10 +119,10 @@ const refreshToken = async (req, res) => {
 
     //Find User data from database by id
     const user = await findById(decoded.id);
-    
+
     //Create JWT Tokens
-    const newAccessToken = jwt.generateAccessToken({id : user.id, email : user.email});
-    const newRefreshToken = jwt.generateRefreshToken({id : user.id, email : user.email});
+    const newAccessToken = jwt.generateAccessToken({ id: user.id, email: user.email });
+    const newRefreshToken = jwt.generateRefreshToken({ id: user.id, email: user.email });
 
     //Update input token to new token in database(only latest token will remain other all will be expire for that user)
     tokenRecord.accessToken = newAccessToken;
@@ -118,4 +135,24 @@ const refreshToken = async (req, res) => {
   }
 };
 
-module.exports = { register, login, refreshToken };
+const logout = async (req, res) => {
+
+  // 1. Extract refreshToken from cookies
+  const refreshToken = req.cookies;
+  console.log('token', refreshToken);
+
+  if (!refreshToken) {
+    return res.status(400).json({ message: "No refresh token found" });
+  }
+
+  // 3. Clear the HTTP-only cookie
+  res.clearCookie('refreshToken', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+  });
+
+  return res.status(200).json({ message: "Logged out successfully" });
+}
+
+module.exports = { register, login, refreshToken, logout };
